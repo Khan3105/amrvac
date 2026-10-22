@@ -3,7 +3,7 @@
 /
 
 &filelist
-  base_filename='./output/WR_1D_'
+  base_filename='./output_test/WR_1D_'
   autoconvert      = F
   convert_type     = 'oneblock'
   level_io         = 1
@@ -16,12 +16,12 @@
    itsave(1,2)     = 0
    !ditsave_dat     = 1
    !ditsave_log     = 100
-   dtsave_dat     = 1.d-1
-   dtsave_log     = 1.d-1
+   dtsave_dat     = 1.d0
+   dtsave_log     = 1.d0
 /
 
  &stoplist
-   time_max = 4.d2
+   time_max = 1.d1
    dtmin = 1.0d-20
    !it_max = 100
 /
@@ -49,8 +49,8 @@
    refine_max_level   = 1
    domain_nx1         = 1024
    block_nx1          = 128
-   xprobmin1      = 1.d0
-   xprobmax1       = 11.d0
+   xprobmin1          = 1.d0
+   xprobmax1          = 11.d0
    refine_threshold   = 20*0.5d0
    derefine_ratio     = 20*1.d0/2.d0
  /
@@ -61,11 +61,15 @@
   slowsteps = 100
  /
 
+ &eos_list
+  eos_type = 'FI'
+  He_abundance = 1.0d4
+  gamma = 1.6667d0
+ /
+
  &hd_list
-  He_abundance = 0.7d0
   hd_gravity = .true.
   hd_energy = .true.
-  hd_gamma = 1.6667d0
   hd_radiation_fld = .true.
  /
 
@@ -74,18 +78,21 @@
   fld_opacity_law = 'special'
   fld_fluxlimiter = 'Minerbo'
   fld_diff_tol = 1.d-5
-  fld_bisect_tol = 1.d-13
-  diffcrash_resume = .true.
+  fld_bisect_tol = 1.d-12
+  fld_force_MG_converged = .true.
+  fld_kappa0 = 0.2d0
   /
 
  &wind_list
+  use_beta_law = .true.
+  beta_vel = 0.5d0
+  T_out_ic = 5.d4
   cak_Q = 2.30d3
   cak_a = 0.5d0
   cak_base = 0.66d0
   cak_x0 = 0.4d0
   cak_x1 = 0.65d0
   rho_bound = 2.5d-8
-  T_bound = 3.2d5
   Gamma_e_bound = 0.4d0 !0.40d0
   kappa_e = 0.2d0
   R_star = 1.d0
