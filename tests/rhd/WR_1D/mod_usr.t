@@ -1,4 +1,4 @@
-!>  Based on WR_1D from amrvac 2.2.4 - adapted by Kian Tedeskino 2026 BIG PENIS
+!>  Based on WR_1D from amrvac 2.2.4 - adapted by Kian Tedeskino 2026
 module mod_usr
 
   ! Include a physics module
