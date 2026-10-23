@@ -335,17 +335,17 @@ contains
                  !> * 4*dpi*xprobmin1**2 this turned F_out into a luminosity
       if (F_adv .ne. F_adv) F_adv = 0.d0
 
-      !> In 3.3 w(:,i_diff_mg) holds D*dt during the implicit step,
+      !> w(:,i_diff_mg) starts out as zero, which triggers mpistop
       !> so compute D in the first interior cell here
-      !ixPmin1 = ixBmax1; ixPmax1 = ixBmax1+2
-      !ixCmin1 = ixBmax1+1; ixCmax1 = ixBmax1+1
-      !wprim(ixI^S,1:nw) = w(ixI^S,1:nw)
-      !call phys_to_primitive(ixI^L,ixP^L,wprim,x)
-      !call fld_get_opacity_prim(wprim, x, ixI^L, ixC^L, kappa_D, fld_fl)
-      !call fld_get_fluxlimiter_prim(wprim, x, ixI^L, ixC^L, lambda_D, R_D, 1, fld_fl)
-      !D_base = c_norm*lambda_D(ixCmin1)/(kappa_D(ixCmin1)*wprim(ixCmin1,rho_))
-      !> Updated mod_fld.t such that D is not multiplied by qdt
-      Local_gradE(ixI^S) = -(F_bound-F_adv)/w(nghostcells+1,i_diff_mg)
+      ixPmin1 = ixBmax1; ixPmax1 = ixBmax1+2
+      ixCmin1 = ixBmax1+1; ixCmax1 = ixBmax1+1
+      wprim(ixI^S,1:nw) = w(ixI^S,1:nw)
+      call phys_to_primitive(ixI^L,ixP^L,wprim,x)
+      call fld_get_opacity_prim(wprim, x, ixI^L, ixC^L, kappa_D, fld_fl)
+      call fld_get_fluxlimiter_prim(wprim, x, ixI^L, ixC^L, lambda_D, R_D, 1, fld_fl)
+      D_base = c_norm*lambda_D(ixCmin1)/(kappa_D(ixCmin1)*wprim(ixCmin1,rho_))
+      
+      Local_gradE(ixI^S) = -(F_bound-F_adv)/D_base
       gradE = Local_gradE(nghostcells)
       !Run was using same bad guess for gradE for entire run, update:
       mg%bc(1, mg_iphi)%bc_value = gradE 
