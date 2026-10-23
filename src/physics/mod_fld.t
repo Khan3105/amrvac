@@ -197,14 +197,19 @@ module mod_fld
           mg%bc(iB, mg_iphi)%bc_value = 0.0_dp
        case (bc_periodic)
           ! Nothing to do here, this is picked up through periodB variable
+       !case (bc_special)
+       !   if(mype==0)then
+       !      print *,'Special boundary for Erad needs specific user-set MG BC treatment'
+       !      print *,'                 and this could be through usr_special_mg_bc call'
+       !   endif
+       !   if (associated(usr_special_mg_bc)) then 
+       !      call usr_special_mg_bc(iB)
+       !   endif
        case (bc_special)
-          if(mype==0)then
-             print *,'Special boundary for Erad needs specific user-set MG BC treatment'
-             print *,'                 and this could be through usr_special_mg_bc call'
+          if (.not. associated(usr_special_mg_bc)) then
+              call mpistop('Special Erad boundary requires usr_special_mg_bc')
           endif
-          if (associated(usr_special_mg_bc)) then 
-             call usr_special_mg_bc(iB)
-          endif
+          call usr_special_mg_bc(iB)
        case default
           call mpistop("divE_multigrid warning: unknown b.c. ")
        end select
@@ -807,13 +812,14 @@ module mod_fld
     call update_diffcoeff(psa,fl)
 
     ! now we multiply the diffusion coefficient with dtfactor*dt on entire mesh+1 domain
-    ixO^L=ixM^LL^LADD1;
-    do iigrid=1,igridstail; igrid=igrids(iigrid);
-       {do ix^D = ixOmin^D,ixOmax^D\ }
-          psa(igrid)%w(ix^D,i_diff_mg)= psa(igrid)%w(ix^D,i_diff_mg)*dtfactor*qdt
-       {enddo\}
-    end do
+    !ixO^L=ixM^LL^LADD1;
+    !do iigrid=1,igridstail; igrid=igrids(iigrid);
+    !   {do ix^D = ixOmin^D,ixOmax^D\ }
+    !      psa(igrid)%w(ix^D,i_diff_mg)= psa(igrid)%w(ix^D,i_diff_mg)*dtfactor*qdt
+    !   {enddo\}
+    !end do
 
+    call fld_set_mg_bounds()
     fac = 1.0d0
     max_residual = fld_diff_tol
 
@@ -848,7 +854,12 @@ module mod_fld
     call vhelmholtz_set_lambda(fac)
     ! copy in the (variable) diffusion coefficient in mg_iveps
     ! NOTE: this copies also the ghostcell values for this coefficient to mg
-    call mg_copy_to_tree(i_diff_mg, mg_iveps, factor=fac, state_from=psa)
+    
+    ! Update: No longer multiplying D by dt so need here.
+    !call mg_copy_to_tree(i_diff_mg, mg_iveps, factor=fac, state_from=psa)
+    call mg_copy_to_tree(i_diff_mg, mg_iveps, factor=dtfactor*qdt, state_from=psa)
+
+    
     ! copy in the Erad variable in mg_iphi (the one we solve for)
     call mg_copy_to_tree(iw_r_e, mg_iphi, factor=fac, state_from=psa)
     ! copy in RHS f factor as Erad with factor -1
@@ -921,6 +932,8 @@ module mod_fld
     ixO^L=ixM^LL^LADD1;
     !$OMP PARALLEL DO PRIVATE(igrid)
     do iigrid=1,igridstail; igrid=igrids(iigrid);
+        block => psa(igrid)
+        ^D&dxlevel(^D)=rnode(rpdx^D_,igrid);
         call fld_get_diffcoef_central(psa(igrid)%w, psa(igrid)%x, ixG^LL, ixO^L, fl)
     end do
     !$OMP END PARALLEL DO

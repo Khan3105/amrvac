@@ -336,14 +336,15 @@ contains
 
       !> In 3.3 w(:,i_diff_mg) holds D*dt during the implicit step,
       !> so compute D in the first interior cell here
-      ixPmin1 = ixBmax1; ixPmax1 = ixBmax1+2
-      ixCmin1 = ixBmax1+1; ixCmax1 = ixBmax1+1
-      wprim(ixI^S,1:nw) = w(ixI^S,1:nw)
-      call phys_to_primitive(ixI^L,ixP^L,wprim,x)
-      call fld_get_opacity_prim(wprim, x, ixI^L, ixC^L, kappa_D, fld_fl)
-      call fld_get_fluxlimiter_prim(wprim, x, ixI^L, ixC^L, lambda_D, R_D, 1, fld_fl)
-      D_base = c_norm*lambda_D(ixCmin1)/(kappa_D(ixCmin1)*wprim(ixCmin1,rho_))
-      Local_gradE(ixI^S) = -(F_bound-F_adv)/D_base
+      !ixPmin1 = ixBmax1; ixPmax1 = ixBmax1+2
+      !ixCmin1 = ixBmax1+1; ixCmax1 = ixBmax1+1
+      !wprim(ixI^S,1:nw) = w(ixI^S,1:nw)
+      !call phys_to_primitive(ixI^L,ixP^L,wprim,x)
+      !call fld_get_opacity_prim(wprim, x, ixI^L, ixC^L, kappa_D, fld_fl)
+      !call fld_get_fluxlimiter_prim(wprim, x, ixI^L, ixC^L, lambda_D, R_D, 1, fld_fl)
+      !D_base = c_norm*lambda_D(ixCmin1)/(kappa_D(ixCmin1)*wprim(ixCmin1,rho_))
+      !> Updated mod_fld.t such that D is not multiplied by qdt
+      Local_gradE(ixI^S) = -(F_bound-F_adv)/w(nghostcells+1,i_diff_mg)
       gradE = Local_gradE(nghostcells)
       !Run was using same bad guess for gradE for entire run, update:
       mg%bc(1, mg_iphi)%bc_value = gradE 
@@ -399,21 +400,43 @@ contains
   subroutine mg_boundary_conditions(iB)
     use mod_global_parameters
     use mod_multigrid_coupling
+    
+    integer, intent(in) :: iB
+    integer :: iigrid,igrid,mpierr
+    double precision :: sendbuf(2),recvbuf(2),value
+    logical :: owns_boundary
 
-    integer, intent(in)             :: iB
-
-    select case (iB)
-    case (1)
-      mg%bc(iB, mg_iphi)%bc_type = mg_bc_neumann
-      mg%bc(iB, mg_iphi)%bc_value = gradE
-
-    case (2)
-      mg%bc(iB, mg_iphi)%bc_type = mg_bc_dirichlet
-      mg%bc(iB, mg_iphi)%bc_value = E_out
-
+    owns_boundary=.false.
+    if (mg%is_allocated) then
+       do iigrid=1,igridstail
+          igrid=igrids(iigrid)
+          if (ps(igrid)%is_physical_boundary(iB)) owns_boundary=.true.
+       enddo
+    endif
+    sendbuf=0.d0
+    if (owns_boundary) then
+       sendbuf(2)=1.d0
+       if (iB == 1) sendbuf(1)=gradE
+       if (iB == 2) sendbuf(1)=E_out
+    endif
+    call MPI_ALLREDUCE(sendbuf,recvbuf,2,MPI_DOUBLE_PRECISION,MPI_SUM,icomm,mpierr)
+    if (recvbuf(2)>0.d0) then
+       if (nint(recvbuf(2))/=1) call mpistop('WR_1D: expected one owner per 1D boundary')
+       value=recvbuf(1)
+    else
+       if (iB == 1) value=gradE
+       if (iB == 2) value=E_out
+    endif
+    if (.not.ieee_is_finite(value)) call mpistop('WR_1D: non-finite MG boundary value')
+    select case(iB)
+    case(1)
+       mg%bc(iB,mg_iphi)%bc_type=mg_bc_neumann
+    case(2)
+       mg%bc(iB,mg_iphi)%bc_type=mg_bc_dirichlet
     case default
-      call mpistop("issue in mg_bound in mod_usr")
+       call mpistop('WR_1D: unknown MG boundary')
     end select
+    mg%bc(iB,mg_iphi)%bc_value=value
   end subroutine mg_boundary_conditions
 
 
