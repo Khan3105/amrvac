@@ -197,19 +197,14 @@ module mod_fld
           mg%bc(iB, mg_iphi)%bc_value = 0.0_dp
        case (bc_periodic)
           ! Nothing to do here, this is picked up through periodB variable
-       !case (bc_special)
-       !   if(mype==0)then
-       !      print *,'Special boundary for Erad needs specific user-set MG BC treatment'
-       !      print *,'                 and this could be through usr_special_mg_bc call'
-       !   endif
-       !   if (associated(usr_special_mg_bc)) then 
-       !      call usr_special_mg_bc(iB)
-       !   endif
        case (bc_special)
-          if (.not. associated(usr_special_mg_bc)) then
-              call mpistop('Special Erad boundary requires usr_special_mg_bc')
+          if(mype==0)then
+             print *,'Special boundary for Erad needs specific user-set MG BC treatment'
+             print *,'                 and this could be through usr_special_mg_bc call'
           endif
-          call usr_special_mg_bc(iB)
+          if (associated(usr_special_mg_bc)) then 
+             call usr_special_mg_bc(iB)
+          endif
        case default
           call mpistop("divE_multigrid warning: unknown b.c. ")
        end select
