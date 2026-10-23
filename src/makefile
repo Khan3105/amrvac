@@ -40,8 +40,8 @@ amrvac.o: mod_input_output_helper.mod
 amrvac.o: mod_multigrid_coupling.mod
 amrvac.o: mod_particles.mod
 amrvac.o: mod_physics.mod
+amrvac.o: mod_rt_sc_slab.mod
 amrvac.o: mod_selectgrids.mod
-amrvac.o: mod_source.mod
 amrvac.o: mod_timing.mod
 amrvac.o: mod_trac.mod
 amrvac.o: mod_usr.mod
@@ -117,6 +117,7 @@ mod_boundary_conditions.o: mod_physics.mod
 mod_boundary_conditions.o: mod_usr_methods.mod
 mod_bremsstrahlung.o: mod_constants.mod
 mod_bremsstrahlung.o: mod_physics.mod
+mod_cak_force.o: mod_cak_opacity.mod
 mod_cak_force.o: mod_comm_lib.mod
 mod_cak_force.o: mod_constants.mod
 mod_cak_force.o: mod_global_parameters.mod
@@ -207,13 +208,15 @@ mod_eos.o: mod_eos_lte_tables.mod
 mod_eos.o: mod_eos_pi.mod
 mod_eos.o: mod_eos_shared_functions.mod
 mod_eos.o: mod_global_parameters.mod
+mod_eos.o: mod_physics.mod
+mod_eos.o: mod_thermal_conduction.mod
 mod_eos.o: mod_timing.mod
+mod_eos.o: mod_variables.mod
 mod_eos_container.o: mod_global_parameters.mod
 mod_eos_fi.o: mod_eos_container.mod
 mod_eos_fi.o: mod_eos_shared_functions.mod
 mod_eos_fi.o: mod_global_parameters.mod
 mod_eos_fi.o: mod_physics.mod
-mod_eos_fi.o: mod_timing.mod
 mod_eos_interp.o: mod_eos_container.mod
 mod_eos_interp.o: mod_lookup_table.mod
 mod_eos_lte.o: mod_comm_lib.mod
@@ -253,7 +256,6 @@ mod_eos_pi.o: mod_eos_fi.mod
 mod_eos_pi.o: mod_eos_pi_tables.mod
 mod_eos_pi.o: mod_global_parameters.mod
 mod_eos_pi.o: mod_physics.mod
-mod_eos_pi.o: mod_timing.mod
 mod_eos_pi_tables.o: mod_comm_lib.mod
 mod_eos_pi_tables.o: mod_constants.mod
 mod_eos_pi_tables.o: mod_global_parameters.mod
@@ -264,6 +266,7 @@ mod_errest.o: mod_comm_lib.mod
 mod_errest.o: mod_forest.mod
 mod_errest.o: mod_global_parameters.mod
 mod_errest.o: mod_physics.mod
+mod_errest.o: mod_rt_sc_slab.mod
 mod_errest.o: mod_usr_methods.mod
 mod_escape_probability.o: mod_comm_lib.mod
 mod_escape_probability.o: mod_connectivity.mod
@@ -354,6 +357,7 @@ mod_ghostcells_update.o: mod_coarsen.mod
 mod_ghostcells_update.o: mod_comm_lib.mod
 mod_ghostcells_update.o: mod_global_parameters.mod
 mod_ghostcells_update.o: mod_physics.mod
+mod_ghostcells_update.o: mod_timing.mod
 mod_ghostcells_update.o: mod_usr_methods.mod
 mod_gimli.o: mod_comm_lib.mod
 mod_gimli.o: mod_eos.mod
@@ -384,7 +388,6 @@ mod_hd_eos.o: mod_dust.mod
 mod_hd_eos.o: mod_eos.mod
 mod_hd_eos.o: mod_eos_container.mod
 mod_hd_eos.o: mod_eos_lte.mod
-mod_hd_eos.o: mod_eos_lte_entropy.mod
 mod_hd_eos.o: mod_eos_lte_saha.mod
 mod_hd_eos.o: mod_eos_pi.mod
 mod_hd_eos.o: mod_global_parameters.mod
@@ -392,7 +395,6 @@ mod_hd_eos.o: mod_hd_phys.mod
 mod_hd_eos.o: mod_physics.mod
 mod_hd_eos.o: mod_radiative_cooling.mod
 mod_hd_eos.o: mod_small_values.mod
-mod_hd_eos.o: mod_timing.mod
 mod_hd_eos.o: mod_usr_methods.mod
 mod_hd_hllc.o: mod_dust.mod
 mod_hd_hllc.o: mod_global_parameters.mod
@@ -404,6 +406,7 @@ mod_hd_phys.o: mod_comm_lib.mod
 mod_hd_phys.o: mod_constants.mod
 mod_hd_phys.o: mod_dust.mod
 mod_hd_phys.o: mod_eos.mod
+mod_hd_phys.o: mod_eos_container.mod
 mod_hd_phys.o: mod_eos_lte.mod
 mod_hd_phys.o: mod_eos_pi_tables.mod
 mod_hd_phys.o: mod_escape_probability.mod
@@ -416,6 +419,7 @@ mod_hd_phys.o: mod_particles.mod
 mod_hd_phys.o: mod_physics.mod
 mod_hd_phys.o: mod_radiative_cooling.mod
 mod_hd_phys.o: mod_rotating_frame.mod
+mod_hd_phys.o: mod_rt_sc_slab.mod
 mod_hd_phys.o: mod_small_values.mod
 mod_hd_phys.o: mod_supertimestepping.mod
 mod_hd_phys.o: mod_thermal_conduction.mod
@@ -449,6 +453,7 @@ mod_initialize.o: mod_usr_methods.mod
 mod_initialize_amr.o: mod_amr_solution_node.mod
 mod_initialize_amr.o: mod_comm_lib.mod
 mod_initialize_amr.o: mod_constrained_transport.mod
+mod_initialize_amr.o: mod_eos.mod
 mod_initialize_amr.o: mod_functions_connectivity.mod
 mod_initialize_amr.o: mod_functions_forest.mod
 mod_initialize_amr.o: mod_ghostcells_update.mod
@@ -561,7 +566,6 @@ mod_mhd_eos.o: mod_mhd_phys.mod
 mod_mhd_eos.o: mod_physics.mod
 mod_mhd_eos.o: mod_radiative_cooling.mod
 mod_mhd_eos.o: mod_small_values.mod
-mod_mhd_eos.o: mod_timing.mod
 mod_mhd_eos.o: mod_usr_methods.mod
 mod_mhd_hllc.o: mod_functions_bfield.mod
 mod_mhd_hllc.o: mod_global_parameters.mod
@@ -573,6 +577,9 @@ mod_mhd_phys.o: mod_constants.mod
 mod_mhd_phys.o: mod_constrained_transport.mod
 mod_mhd_phys.o: mod_convert.mod
 mod_mhd_phys.o: mod_eos.mod
+mod_mhd_phys.o: mod_eos_container.mod
+mod_mhd_phys.o: mod_eos_lte.mod
+mod_mhd_phys.o: mod_eos_pi.mod
 mod_mhd_phys.o: mod_eos_pi_tables.mod
 mod_mhd_phys.o: mod_fix_conserve.mod
 mod_mhd_phys.o: mod_fld.mod
@@ -587,11 +594,11 @@ mod_mhd_phys.o: mod_particles.mod
 mod_mhd_phys.o: mod_physics.mod
 mod_mhd_phys.o: mod_radiative_cooling.mod
 mod_mhd_phys.o: mod_rotating_frame.mod
+mod_mhd_phys.o: mod_rt_sc_slab.mod
 mod_mhd_phys.o: mod_small_values.mod
 mod_mhd_phys.o: mod_supertimestepping.mod
 mod_mhd_phys.o: mod_thermal_conduction.mod
 mod_mhd_phys.o: mod_thermal_emission.mod
-mod_mhd_phys.o: mod_timing.mod
 mod_mhd_phys.o: mod_usr_methods.mod
 mod_mhd_phys.o: mod_viscosity.mod
 mod_mhd_roe.o: mod_eos.mod
@@ -700,6 +707,7 @@ mod_radiative_cooling.o: mod_comm_lib.mod
 mod_radiative_cooling.o: mod_global_parameters.mod
 mod_radiative_cooling.o: mod_physics.mod
 mod_radiative_cooling.o: mod_radloss_tables.mod
+mod_radiative_cooling.o: mod_rt_sc_slab.mod
 mod_random.o: mod_constants.mod
 mod_random_heating.o: mod_comm_lib.mod
 mod_random_heating.o: mod_global_parameters.mod
@@ -739,6 +747,29 @@ mod_rotating_frame.o: mod_geometry.mod
 mod_rotating_frame.o: mod_global_parameters.mod
 mod_rotating_frame.o: mod_physics.mod
 mod_rotating_frame.o: mod_usr_methods.mod
+mod_rt_sc_kernel.o: mod_global_parameters.mod
+mod_rt_sc_opacity.o: mod_comm_lib.mod
+mod_rt_sc_opacity.o: mod_eos.mod
+mod_rt_sc_opacity.o: mod_global_parameters.mod
+mod_rt_sc_slab.o: mod_comm_lib.mod
+mod_rt_sc_slab.o: mod_eos.mod
+mod_rt_sc_slab.o: mod_global_parameters.mod
+mod_rt_sc_slab.o: mod_rt_sc_solvers.mod
+mod_rt_sc_slab.o: mod_rt_sc_state.mod
+mod_rt_sc_slab.o: mod_variables.mod
+mod_rt_sc_solvers.o: mod_comm_lib.mod
+mod_rt_sc_solvers.o: mod_ghostcells_update.mod
+mod_rt_sc_solvers.o: mod_global_parameters.mod
+mod_rt_sc_solvers.o: mod_rt_sc_state.mod
+mod_rt_sc_solvers.o: mod_timing.mod
+mod_rt_sc_solvers.o: mod_variables.mod
+mod_rt_sc_state.o: mod_comm_lib.mod
+mod_rt_sc_state.o: mod_geometry.mod
+mod_rt_sc_state.o: mod_global_parameters.mod
+mod_rt_sc_state.o: mod_physicaldata.mod
+mod_rt_sc_state.o: mod_rt_sc_kernel.mod
+mod_rt_sc_state.o: mod_rt_sc_opacity.mod
+mod_rt_sc_state.o: mod_usr_methods.mod
 mod_selectgrids.o: mod_forest.mod
 mod_selectgrids.o: mod_global_parameters.mod
 mod_selectgrids.o: mod_usr_methods.mod
@@ -762,6 +793,7 @@ mod_source.o: mod_ghostcells_update.mod
 mod_source.o: mod_global_parameters.mod
 mod_source.o: mod_physics.mod
 mod_source.o: mod_supertimestepping.mod
+mod_source.o: mod_timing.mod
 mod_source.o: mod_usr_methods.mod
 mod_space_filling_curve.o: mod_comm_lib.mod
 mod_space_filling_curve.o: mod_forest.mod
@@ -794,6 +826,7 @@ mod_thermal_conduction.o: mod_comm_lib.mod
 mod_thermal_conduction.o: mod_fix_conserve.mod
 mod_thermal_conduction.o: mod_geometry.mod
 mod_thermal_conduction.o: mod_global_parameters.mod
+mod_thermal_conduction.o: mod_supertimestepping.mod
 mod_thermal_emission.o: mod_comm_lib.mod
 mod_thermal_emission.o: mod_constants.mod
 mod_thermal_emission.o: mod_eos.mod
@@ -801,6 +834,7 @@ mod_thermal_emission.o: mod_eos_pi_tables.mod
 mod_thermal_emission.o: mod_geometry.mod
 mod_thermal_emission.o: mod_global_parameters.mod
 mod_thermal_emission.o: mod_physics.mod
+mod_timing.o: mod_global_parameters.mod
 mod_trac.o: mod_comm_lib.mod
 mod_trac.o: mod_eos.mod
 mod_trac.o: mod_global_parameters.mod
