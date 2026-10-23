@@ -8,6 +8,7 @@ module mod_usr
   use mod_physics, only: phys_to_primitive, phys_to_conserved
   use mod_multigrid_coupling
 
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
 
   implicit none
 

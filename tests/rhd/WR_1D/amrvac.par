@@ -3,7 +3,7 @@
 /
 
 &filelist
-  base_filename='./output_test/WR_1D_'
+  base_filename='./test/WR_1D_'
   autoconvert      = F
   convert_type     = 'oneblock'
   level_io         = 1
@@ -21,7 +21,7 @@
 /
 
  &stoplist
-   time_max = 1.d1
+   time_max = 2.d1
    dtmin = 1.0d-20
    !it_max = 100
 /
@@ -62,7 +62,6 @@
  /
 
  &eos_list
-  eos_type = 'FI'
   He_abundance = 1.0d4
   gamma = 1.6667d0
  /
@@ -85,7 +84,7 @@
 
  &wind_list
   use_beta_law = .true.
-  beta_vel = 0.5d0
+  beta_vel = 0.5d0 !Exponent of beta law for velocity
   T_out_ic = 5.d4
   cak_Q = 2.30d3
   cak_a = 0.5d0
