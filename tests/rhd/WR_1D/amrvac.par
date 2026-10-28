@@ -3,7 +3,7 @@
 /
 
 &filelist
-  base_filename='./test/WR_1D_'
+  base_filename='./output/WR_1D_'
   autoconvert      = F
   convert_type     = 'oneblock'
   level_io         = 1
@@ -21,7 +21,7 @@
 /
 
  &stoplist
-   time_max = 2.d2
+   time_max = 1.d2
    dtmin = 1.0d-20
    !it_max = 100
 /
@@ -46,7 +46,7 @@
 /
 
  &meshlist
-   refine_max_level   = 1
+   refine_max_level   = 2
    domain_nx1         = 1024
    block_nx1          = 128
    xprobmin1          = 1.d0
@@ -62,7 +62,7 @@
  /
 
  &eos_list
-  He_abundance = 1.0d4
+  He_abundance = 1.0d4 !fully ionised Helium (Poniatowski+2021)
   gamma = 1.6667d0
  /
 
@@ -83,7 +83,7 @@
   /
 
  &wind_list
-  use_beta_law = .true.
+  use_beta_law = .false.
   beta_vel = 0.5d0 !Exponent of beta law for velocity
   T_out_ic = 5.d4
   cak_Q = 2.30d3

@@ -197,6 +197,8 @@ module mod_fld
     use mod_usr_methods
 
     integer :: iB
+    ! now called before every implicit solve, so only warn once per run
+    logical, save :: special_warned = .false.
 
     ! Set boundary conditions for the multigrid solver
     do iB = 1, 2*ndim
@@ -216,11 +218,12 @@ module mod_fld
        case (bc_periodic)
           ! Nothing to do here, this is picked up through periodB variable
        case (bc_special)
-          if(mype==0)then
+          if(mype==0 .and. .not.special_warned)then
              print *,'Special boundary for Erad needs specific user-set MG BC treatment'
              print *,'                 and this could be through usr_special_mg_bc call'
           endif
-          if (associated(usr_special_mg_bc)) then 
+          special_warned = .true.
+          if (associated(usr_special_mg_bc)) then
              call usr_special_mg_bc(iB)
           endif
        case default
