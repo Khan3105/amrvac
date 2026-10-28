@@ -461,17 +461,23 @@ contains
 
     end subroutine mhd_to_conserved_split_rho
 
-    !> E=Bxv and S=ExB from a primitive state, both with the total field (eqs 5 and 23)
-    subroutine semirelati_E_S(w,ixI^L,ixO^L,efd,S)
+    !> Transform primitive variables into conservative ones (semirelativistic, any EoS)
+    subroutine mhd_to_conserved_semirelati(ixI^L,ixO^L,w,x)
         use mod_global_parameters
-        integer, intent(in)           :: ixI^L, ixO^L
-        double precision, intent(in)  :: w(ixI^S,nw)
-        double precision, intent(out) :: efd(ixO^S,1:ndir), S(ixO^S,1:ndir)
+        integer, intent(in)             :: ixI^L, ixO^L
+        double precision, intent(inout) :: w(ixI^S, nw)
+        double precision, intent(in)    :: x(ixI^S, 1:ndim)
 
+        double precision :: efd(ixO^S,1:ndir), S(ixO^S,1:ndir), eint(ixO^S)
         double precision :: btot(1:ndir)
         integer :: ix^D
 
         {do ix^DB=ixOmin^DB,ixOmax^DB\}
+            ! this loop can not be vectorized
+            eint(ix^D)=mhd_semirelati_eint(w(ix^D,p_),w(ix^D,rho_))
+        {end do\}
+        {do ix^DB=ixOmin^DB,ixOmax^DB\}
+            ! fully vectorized loop, E, S, e_, m^C_ all in one loop for speed
             ^C&btot(^C)=w(ix^D,b^C_)\
             if(B0field) then
                 ^C&btot(^C)=btot(^C)+block%B0(ix^D,^C,b0i)\
@@ -495,28 +501,11 @@ contains
                 efd(ix^D,1)=zero
                 S(ix^D,1)=zero
             }
-        {end do\}
-
-    end subroutine semirelati_E_S
-
-    !> Transform primitive variables into conservative ones (semirelativistic, any EoS)
-    subroutine mhd_to_conserved_semirelati(ixI^L,ixO^L,w,x)
-        use mod_global_parameters
-        integer, intent(in)             :: ixI^L, ixO^L
-        double precision, intent(inout) :: w(ixI^S, nw)
-        double precision, intent(in)    :: x(ixI^S, 1:ndim)
-
-        double precision :: efd(ixO^S,1:ndir), S(ixO^S,1:ndir), eint
-        integer :: ix^D
-
-        call semirelati_E_S(w,ixI^L,ixO^L,efd,S)
-        {do ix^DB=ixOmin^DB,ixOmax^DB\}
-            eint=mhd_semirelati_eint(w(ix^D,p_),w(ix^D,rho_))
             if(mhd_internal_e) then
-                w(ix^D,e_)=eint
+                w(ix^D,e_)=eint(ix^D)
             else
                 ! equation (9), the magnetic energy from the stored slot (eq 92 under splitting)
-                w(ix^D,e_)=eint+half*((^C&w(ix^D,m^C_)**2+)*w(ix^D,rho_)&
+                w(ix^D,e_)=eint(ix^D)+half*((^C&w(ix^D,m^C_)**2+)*w(ix^D,rho_)&
                           +(^C&w(ix^D,b^C_)**2+)&
                           +(^C&efd(ix^D,^C)**2+)*eos%inv_squared_c)
             end if
@@ -533,10 +522,34 @@ contains
         double precision, intent(in)    :: x(ixI^S, 1:ndim)
 
         double precision :: efd(ixO^S,1:ndir), S(ixO^S,1:ndir)
+        double precision :: btot(1:ndir)
         integer :: ix^D
 
-        call semirelati_E_S(w,ixI^L,ixO^L,efd,S)
         {do ix^DB=ixOmin^DB,ixOmax^DB\}
+            ! fully vectorized loop, E, S, e_, m^C_ all in one loop for speed
+            ^C&btot(^C)=w(ix^D,b^C_)\
+            if(B0field) then
+                ^C&btot(^C)=btot(^C)+block%B0(ix^D,^C,b0i)\
+            end if
+            {^IFTHREEC
+                efd(ix^D,1)=btot(2)*w(ix^D,m3_)-btot(3)*w(ix^D,m2_)
+                efd(ix^D,2)=btot(3)*w(ix^D,m1_)-btot(1)*w(ix^D,m3_)
+                efd(ix^D,3)=btot(1)*w(ix^D,m2_)-btot(2)*w(ix^D,m1_)
+                S(ix^D,1)=efd(ix^D,2)*btot(3)-efd(ix^D,3)*btot(2)
+                S(ix^D,2)=efd(ix^D,3)*btot(1)-efd(ix^D,1)*btot(3)
+                S(ix^D,3)=efd(ix^D,1)*btot(2)-efd(ix^D,2)*btot(1)
+            }
+            {^IFTWOC
+                efd(ix^D,1)=zero
+                ! switch 3 with 2 to add 3 when ^C from 1 to 2
+                efd(ix^D,2)=btot(1)*w(ix^D,m2_)-btot(2)*w(ix^D,m1_)
+                S(ix^D,1)=-efd(ix^D,2)*btot(2)
+                S(ix^D,2)=efd(ix^D,2)*btot(1)
+            }
+            {^IFONEC
+                efd(ix^D,1)=zero
+                S(ix^D,1)=zero
+            }
             ! Convert velocity to momentum, equation (9)
             ^C&w(ix^D,m^C_)=w(ix^D,rho_)*w(ix^D,m^C_)+S(ix^D,^C)*eos%inv_squared_c\
         {end do\}
@@ -673,17 +686,54 @@ contains
         double precision, intent(inout) :: w(ixI^S, nw)
         double precision, intent(in)    :: x(ixI^S, 1:ndim)
 
-        double precision :: vel(ixO^S,1:ndir), emech(ixO^S)
+        double precision :: btot(1:ndir), bhat(1:ndir), efd(1:ndir)
+        double precision :: b2, va2c2, tmp, inv_rho, gamma2
         integer :: ix^D
 
         if (fix_small_values) then
             call phys_handle_small_values(.false., w, x, ixI^L, ixO^L, 'mhd_to_primitive_semirelati')
         end if
 
-        call mhd_semirelati_vel_emech(w,ixI^L,ixO^L,vel=vel,emech=emech)
         {do ix^DB=ixOmin^DB,ixOmax^DB\}
-            ^C&w(ix^D,m^C_)=vel(ix^D,^C)\
-            w(ix^D,p_)=mhd_semirelati_p(w(ix^D,e_)-emech(ix^D),w(ix^D,rho_))
+            ^C&btot(^C)=w(ix^D,b^C_)\
+            if(B0field) then
+              ^C&btot(^C)=btot(^C)+block%B0(ix^D,^C,b0i)\
+            end if
+            b2=(^C&btot(^C)**2+)
+            if(b2>smalldouble) then
+              tmp=1.d0/sqrt(b2)
+            else
+              tmp=0.d0
+            end if
+            ^C&bhat(^C)=btot(^C)*tmp\
+            tmp=(^C&bhat(^C)*w(ix^D,m^C_)+)
+            inv_rho=1.d0/w(ix^D,rho_)
+            ! Va^2/c^2; equation (15) scales only the perpendicular momentum
+            va2c2=b2*inv_rho*eos%inv_squared_c
+            gamma2=1.d0/(1.d0+va2c2)
+            ^C&w(ix^D,m^C_)=gamma2*(w(ix^D,m^C_)+va2c2*bhat(^C)*tmp)*inv_rho\
+            if(.not.mhd_internal_e) then
+              ! E=Bxv
+              {^IFTHREEC
+              efd(1)=btot(2)*w(ix^D,m3_)-btot(3)*w(ix^D,m2_)
+              efd(2)=btot(3)*w(ix^D,m1_)-btot(1)*w(ix^D,m3_)
+              efd(3)=btot(1)*w(ix^D,m2_)-btot(2)*w(ix^D,m1_)
+              }
+              {^IFTWOC
+              efd(1)=zero
+              efd(2)=btot(1)*w(ix^D,m2_)-btot(2)*w(ix^D,m1_)
+              }
+              {^IFONEC
+              efd(1)=zero
+              }
+              w(ix^D,e_)=w(ix^D,e_)-half*((^C&w(ix^D,m^C_)**2+)*w(ix^D,rho_)&
+                         +(^C&w(ix^D,b^C_)**2+)&
+                         +(^C&efd(^C)**2+)*eos%inv_squared_c)
+            end if
+        {end do\}
+        {do ix^DB=ixOmin^DB,ixOmax^DB\}
+            ! loop can not be vectorized
+            w(ix^D,p_)=mhd_semirelati_p(w(ix^D,e_),w(ix^D,rho_))
         {end do\}
 
     end subroutine mhd_to_primitive_semirelati
@@ -695,16 +745,32 @@ contains
         double precision, intent(inout) :: w(ixI^S, nw)
         double precision, intent(in)    :: x(ixI^S, 1:ndim)
 
-        double precision :: vel(ixO^S,1:ndir)
+        double precision :: btot(1:ndir), bhat(1:ndir), efd(1:ndir)
+        double precision :: b2, va2c2, tmp, inv_rho, gamma2
         integer :: ix^D
 
         if (fix_small_values) then
-            call phys_handle_small_values(.false., w, x, ixI^L, ixO^L, 'mhd_to_primitive_semirelati_noe')
+            call phys_handle_small_values(.false., w, x, ixI^L, ixO^L, 'mhd_to_primitive_semirelati')
         end if
 
-        call mhd_semirelati_vel_emech(w,ixI^L,ixO^L,vel=vel)
         {do ix^DB=ixOmin^DB,ixOmax^DB\}
-            ^C&w(ix^D,m^C_)=vel(ix^D,^C)\
+            ^C&btot(^C)=w(ix^D,b^C_)\
+            if(B0field) then
+              ^C&btot(^C)=btot(^C)+block%B0(ix^D,^C,b0i)\
+            end if
+            b2=(^C&btot(^C)**2+)
+            if(b2>smalldouble) then
+              tmp=1.d0/sqrt(b2)
+            else
+              tmp=0.d0
+            end if
+            ^C&bhat(^C)=btot(^C)*tmp\
+            tmp=(^C&bhat(^C)*w(ix^D,m^C_)+)
+            inv_rho=1.d0/w(ix^D,rho_)
+            ! Va^2/c^2; equation (15) scales only the perpendicular momentum
+            va2c2=b2*inv_rho*eos%inv_squared_c
+            gamma2=1.d0/(1.d0+va2c2)
+            ^C&w(ix^D,m^C_)=gamma2*(w(ix^D,m^C_)+va2c2*bhat(^C)*tmp)*inv_rho\
         {end do\}
 
     end subroutine mhd_to_primitive_semirelati_noe
@@ -907,8 +973,8 @@ contains
         double precision, intent(inout) :: w(ixI^S, nw)
         double precision, intent(in)    :: x(ixI^S, 1:ndim)
 
-        double precision :: T_val, eint_val, T_FI, log_T_min
-        double precision :: nH(ixI^S), log_nH(ixI^S)
+        double precision :: T_val, eint_val(ixO^S), T_FI, log_T_min
+        double precision :: nH(ixI^S), btot(1:ndir)
         double precision :: efd(ixO^S,1:ndir), S(ixO^S,1:ndir)
         integer :: ix^D
 
@@ -927,48 +993,79 @@ contains
         end if
 
         call eos%get_nH(w, x, ixI^L, ixO^L, nH)
-        log_nH(ixO^S) = dlog10(nH(ixO^S))
-        ! E and the Poynting momentum while the m slots still hold velocity
-        if (mhd_semirelativistic) call semirelati_E_S(w,ixI^L,ixO^L,efd,S)
 
         {do ix^DB=ixOmin^DB,ixOmax^DB\}
+            ! loop can not be vectorized
             T_val = w(ix^D,p_)  ! T stored in p_ slot
             if (T_val > T_FI) then
                 ! FI: eint = nH*(n_per_nH*T/(gamma-1) + eion)
-                eint_val = nH(ix^D) &
+                eint_val(ix^D) = nH(ix^D) &
                     * (eos%n_per_nH_FI * T_val * eos%inv_gamma_minus_1 &
                     + eos%eion_per_nH)
             else if (eos%method_id == EOS_ANALYTIC) then
                 ! Analytical Saha: eint from T directly
-                eint_val = saha_eint_from_nH_T(nH(ix^D), T_val) * nH(ix^D)
+                eint_val(ix^D) = saha_eint_from_nH_T(nH(ix^D), T_val) * nH(ix^D)
             else
                 ! Ionisation zone: eint/nH from T table
-                eint_val = eint_nH_from_T( &
-                    log_nH(ix^D), &
+                eint_val(ix^D) = eint_nH_from_T( &
+                    dlog10(nH(ix^D)), &
                     dlog10(max(T_val, 10.0d0**log_T_min))) &
                     * nH(ix^D)
             end if
-            if (mhd_internal_e) then
-                w(ix^D,e_) = eint_val
-            else if (mhd_semirelativistic) then
-                ! equation (9), the magnetic energy from the stored slot
-                w(ix^D,e_) = eint_val &
-                    + half*(w(ix^D,rho_)*(^C&w(ix^D,m^C_)**2+) &
-                    + (^C&w(ix^D,b^C_)**2+) &
-                    + (^C&efd(ix^D,^C)**2+)*eos%inv_squared_c)
-            else
-                ! E = eint + 0.5*rho*v^2 + 0.5*B^2
-                w(ix^D,e_) = eint_val &
-                    + half*(w(ix^D,rho_)*(^C&w(ix^D,m^C_)**2+) &
-                    + (^C&w(ix^D,b^C_)**2+))
-            end if
-            ! Convert velocity to momentum
-            if (mhd_semirelativistic) then
-                ^C&w(ix^D,m^C_)=w(ix^D,rho_)*w(ix^D,m^C_)+S(ix^D,^C)*eos%inv_squared_c\
-            else
-                ^C&w(ix^D,m^C_)=w(ix^D,rho_)*w(ix^D,m^C_)\
-            end if
         {end do\}
+
+        if (mhd_semirelativistic) then
+          {do ix^DB=ixOmin^DB,ixOmax^DB\}
+            ! fully vectorized loop, E, S, e_, m^C_ all in one loop for speed
+              ^C&btot(^C)=w(ix^D,b^C_)\
+              if(B0field) then
+                  ^C&btot(^C)=btot(^C)+block%B0(ix^D,^C,b0i)\
+              end if
+              {^IFTHREEC
+                  efd(ix^D,1)=btot(2)*w(ix^D,m3_)-btot(3)*w(ix^D,m2_)
+                  efd(ix^D,2)=btot(3)*w(ix^D,m1_)-btot(1)*w(ix^D,m3_)
+                  efd(ix^D,3)=btot(1)*w(ix^D,m2_)-btot(2)*w(ix^D,m1_)
+                  S(ix^D,1)=efd(ix^D,2)*btot(3)-efd(ix^D,3)*btot(2)
+                  S(ix^D,2)=efd(ix^D,3)*btot(1)-efd(ix^D,1)*btot(3)
+                  S(ix^D,3)=efd(ix^D,1)*btot(2)-efd(ix^D,2)*btot(1)
+              }
+              {^IFTWOC
+                  efd(ix^D,1)=zero
+                  ! switch 3 with 2 to add 3 when ^C from 1 to 2
+                  efd(ix^D,2)=btot(1)*w(ix^D,m2_)-btot(2)*w(ix^D,m1_)
+                  S(ix^D,1)=-efd(ix^D,2)*btot(2)
+                  S(ix^D,2)=efd(ix^D,2)*btot(1)
+              }
+              {^IFONEC
+                  efd(ix^D,1)=zero
+                  S(ix^D,1)=zero
+              }
+              if (mhd_internal_e) then
+                  w(ix^D,e_) = eint_val(ix^D)
+              else
+                  ! equation (9), the magnetic energy from the stored slot
+                  w(ix^D,e_) = eint_val(ix^D) &
+                      + half*(w(ix^D,rho_)*(^C&w(ix^D,m^C_)**2+) &
+                      + (^C&w(ix^D,b^C_)**2+) &
+                      + (^C&efd(ix^D,^C)**2+)*eos%inv_squared_c)
+              end if
+              ! Convert velocity to momentum
+              ^C&w(ix^D,m^C_)=w(ix^D,rho_)*w(ix^D,m^C_)+S(ix^D,^C)*eos%inv_squared_c\
+          {end do\}
+        else
+          {do ix^DB=ixOmin^DB,ixOmax^DB\}
+              if (mhd_internal_e) then
+                  w(ix^D,e_) = eint_val(ix^D)
+              else
+                  ! E = eint + 0.5*rho*v^2 + 0.5*B^2
+                  w(ix^D,e_) = eint_val(ix^D) &
+                      + half*(w(ix^D,rho_)*(^C&w(ix^D,m^C_)**2+) &
+                      + (^C&w(ix^D,b^C_)**2+))
+              end if
+              ! Convert velocity to momentum
+              ^C&w(ix^D,m^C_)=w(ix^D,rho_)*w(ix^D,m^C_)\
+          {end do\}
+        end if
 
     end subroutine mhd_from_prolong_LTE
 
@@ -1231,11 +1328,18 @@ contains
         double precision :: emech(ixO^S)
         integer :: iw, ix^D
 
-        call mhd_semirelati_vel_emech(w,ixI^L,ixO^L,emech=emech)
-        {do ix^DB=ixOmin^DB,ixOmax^DB\}
-            pth(ix^D)=mhd_semirelati_p(w(ix^D,e_)-emech(ix^D),w(ix^D,rho_))
-            if(fix_small_values.and.pth(ix^D)<small_pressure) pth(ix^D)=small_pressure
-        {end do\}
+        if(mhd_internal_e) then
+          {do ix^DB=ixOmin^DB,ixOmax^DB\}
+              pth(ix^D)=mhd_semirelati_p(w(ix^D,e_),w(ix^D,rho_))
+              if(fix_small_values.and.pth(ix^D)<small_pressure) pth(ix^D)=small_pressure
+          {end do\}
+        else
+          call mhd_semirelati_vel_emech(w,ixI^L,ixO^L,emech=emech)
+          {do ix^DB=ixOmin^DB,ixOmax^DB\}
+              pth(ix^D)=mhd_semirelati_p(w(ix^D,e_)-emech(ix^D),w(ix^D,rho_))
+              if(fix_small_values.and.pth(ix^D)<small_pressure) pth(ix^D)=small_pressure
+          {end do\}
+        end if
 
         if(check_small_values.and..not.fix_small_values) then
             {do ix^DB=ixOmin^DB,ixOmax^DB\}
