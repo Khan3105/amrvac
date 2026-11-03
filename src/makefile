@@ -238,7 +238,6 @@ mod_eos_lte_entropy.o: mod_eos_lte_tables.mod
 mod_eos_lte_entropy.o: mod_global_parameters.mod
 mod_eos_lte_saha.o: mod_comm_lib.mod
 mod_eos_lte_saha.o: mod_eos_container.mod
-mod_eos_lte_saha.o: mod_eos_interp.mod
 mod_eos_lte_saha.o: mod_eos_lte_tables.mod
 mod_eos_lte_saha.o: mod_global_parameters.mod
 mod_eos_lte_state.o: mod_comm_lib.mod
@@ -716,16 +715,6 @@ mod_random_heating_3D.o: mod_geometry.mod
 mod_random_heating_3D.o: mod_global_parameters.mod
 mod_rbsl.o: mod_geometry.mod
 mod_rbsl.o: mod_global_parameters.mod
-mod_rd.o: mod_amrvac.mod
-mod_rd.o: mod_rd_phys.mod
-mod_rd_phys.o: mod_comm_lib.mod
-mod_rd_phys.o: mod_forest.mod
-mod_rd_phys.o: mod_geometry.mod
-mod_rd_phys.o: mod_global_parameters.mod
-mod_rd_phys.o: mod_multigrid_coupling.mod
-mod_rd_phys.o: mod_particles.mod
-mod_rd_phys.o: mod_physics.mod
-mod_rd_phys.o: mod_variables.mod
 mod_refine.o: mod_amr_fct.mod
 mod_refine.o: mod_amr_solution_node.mod
 mod_refine.o: mod_global_parameters.mod
@@ -764,6 +753,7 @@ mod_rt_sc_solvers.o: mod_rt_sc_state.mod
 mod_rt_sc_solvers.o: mod_timing.mod
 mod_rt_sc_solvers.o: mod_variables.mod
 mod_rt_sc_state.o: mod_comm_lib.mod
+mod_rt_sc_state.o: mod_eos.mod
 mod_rt_sc_state.o: mod_geometry.mod
 mod_rt_sc_state.o: mod_global_parameters.mod
 mod_rt_sc_state.o: mod_physicaldata.mod

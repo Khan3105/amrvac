@@ -65,7 +65,7 @@ Some systems have a good starting resource linked to them.
 - `bzfn` = `belousov_fieldnoyes`: **Oregonator** (Field-Noyes model of the Belousov-Zhabotinski reaction)
 
     \f{eqnarray*}{
-        \frac{\partial u}{\partial t} + A_1 u^{p-1} \nabla u &=& D_1 \nabla^2 u + \frac{1}{\epsilon} (\lambda u - u w + u - u^2) \\
+        \frac{\partial u}{\partial t} + A_1 u^{p-1} \nabla u &=& D_1 \nabla^2 u + \frac{1}{\epsilon} (\lambda w - u w + u - u^2) \\
         \frac{\partial v}{\partial t} + A_2 v^{p-1} \nabla v &=& D_2 \nabla^2 v + u - v \\
         \frac{\partial w}{\partial t} + A_3 w^{p-1} \nabla w &=& D_3 \nabla^2 w + \frac{1}{\delta} (-\lambda w - u w + \mu v))
     \f}
@@ -98,7 +98,7 @@ The implicit system is then solved using the AMR-compatible multigrid solver cou
 A number of examples can be found in `tests/ard/`.
 The namelist for the advection-reaction-diffusion module is as follows:
 
-    &rd_list
+    &ard_list
         D1, D2, D3,                  ! Diffusion coefficients
         adv_pow,                     ! Power p of the unknown in the advection term
         A1, A2, A3,                  ! Advection coefficients (d-dimensional)
