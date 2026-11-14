@@ -217,9 +217,9 @@ contains
         double precision :: T_thresh, eint_nH_thresh, p_nH_thresh
 
         !> Ionisation energies in CGS (erg)
-        chi_H   = 13.6d0  * 1.602d-12
-        chi_HeI = 24.6d0  * 1.602d-12
-        chi_HeII = 54.4d0 * 1.602d-12
+        chi_H    = const_chi_H * const_eV
+        chi_HeI  = const_chi_HeI * const_eV
+        chi_HeII = const_chi_HeII * const_eV
 
         !> fully ionised particle count, electron fraction and ionisation energy per hydrogen
         !> atom, eion_per_nH [code] = eion_per_nH [erg] * unit_numberdensity / unit_pressure
@@ -257,6 +257,10 @@ contains
         !> where Rfactor_FI = n_per_nH_FI / (1 + 4*A_He) in code units
         eos%p_rho_FI_threshold = eos%n_per_nH_FI &
             / (1.0d0 + 4.0d0*eos%He_abundance) * T_thresh
+
+        eos%log_T_FI       = dlog10(T_thresh)
+        eos%log_eint_nH_FI = dlog10(eint_nH_thresh)
+        eos%log_p_nH_FI    = dlog10(eos%n_per_nH_FI * T_thresh)
 
         if (mype == 0) then
             write(*,'(a,es12.4)') ' FI bypass: eion_per_nH (code) = ', eos%eion_per_nH

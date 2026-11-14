@@ -176,7 +176,7 @@ contains
   !> Read in the user-supplied parameter-file
   subroutine read_par_files()
     use mod_global_parameters
-    use mod_physics, only: phys_energy, physics_type, phys_wider_stencil
+    use mod_physics, only: phys_energy, phys_total_energy, physics_type, phys_wider_stencil
     use mod_small_values
     use mod_limiter
     use mod_slice
@@ -260,14 +260,14 @@ contains
 
     namelist /methodlist/ time_stepper, time_integrator, &
          source_split_usr, typesourcesplit, local_timestep, &
-         dimsplit, typedimsplit, flux_scheme, &
+         dimsplit, typedimsplit, flux_scheme, limit_on_wold, &
          limiter, gradient_limiter, cada3_radius, &
          loglimit, typeboundspeed, H_correction, &
          typetvd, typeentropy, entropycoef, typeaverage, &
          typegrad, typediv, typecurl, &
          nxdiffusehllc, flathllc, tvdlfeps, flux_adaptive_diffusion, &
          flux_adaptive_diffusion_min, flux_adaptive_diffusion_scale, &
-         flux_energy_only, flatcd, flatsh, ppm_avisc, ppm_rjv, &
+         flatcd, flatsh, ppm_avisc, ppm_rjv, &
          rk2_alfa, imex222_lambda, ssprk_order, rk3_switch, imex_switch, &
          small_temperature, small_pressure, small_density, &
          small_values_method, small_values_daverage, fix_small_values, check_small_values, &
@@ -479,7 +479,6 @@ contains
     flux_adaptive_diffusion = .false.
     flux_adaptive_diffusion_min = 0.d0
     flux_adaptive_diffusion_scale = 1.d0
-    flux_energy_only = .false.
     nxdiffusehllc   = 0
     flathllc        = .false.
     slowsteps       = -1
@@ -497,6 +496,7 @@ contains
     source_split_usr= .false.
     time_stepper    = 'twostep'
     time_integrator = 'default'
+    limit_on_wold   = .false.
     ! default PC or explicit midpoint, hence alfa=0.5
     rk2_alfa        = half 
     ! default IMEX-RK22Ln hence lambda = 1 - 1/sqrt(2)
@@ -819,6 +819,9 @@ contains
        endif
        if(flux_scheme(level)=='hlld'.and.physics_type/='mhd' .and. physics_type/='twofl') &
           call mpistop("Cannot use hlld flux if not using MHD or 2FL only charges physics!")
+
+       if(flux_scheme(level)=='hlld'.and. .not.phys_total_energy) &
+          call mpistop("Cannot use hlld flux if not solving total energy equation!")
 
        if(flux_scheme(level)=='hllc'.and.physics_type=='mf') &
           call mpistop("Cannot use hllc flux if using magnetofriction physics!")
@@ -1389,7 +1392,7 @@ contains
       if(any(typeboundary(:,2*idim-1)==12)) then
         if(any(typeboundary(:,2*idim-1)/=12)) typeboundary(:,2*idim-1)=12
         select case(physics_type)
-        case ('rho','ard','rd','nonlinear','ffhd')
+        case ('rho','ard','nonlinear','ffhd')
            ! all symmetric at pole
            typeboundary(:,2*idim-1)=bc_symm
            if(mype==0) print *,'symmetric minimal pole'
@@ -1416,8 +1419,22 @@ contains
            case default
             call mpistop('Pole is in cylindrical, polar, spherical coordinates!')
            end select
-        case ('twofl','mf')
-           call mpistop('Pole treatment for twofl or mf not implemented yet')
+        case ('twofl')
+           call mpistop('Pole treatment for twofl not implemented yet')
+        case ('mf')
+           if (ndim /= 3 .or. coordinate /= spherical .or. idim /= 2) &
+             call mpistop("MF pole requires a 3D spherical theta boundary")
+           {^IFTHREED
+           ! Spherical angles are still in turns at this point in the parser.
+           if (.not. periodB(3) .or. abs(xprobmax3-xprobmin3-one) >= smalldouble) &
+             call mpistop("MF pole requires full periodic longitude")
+           if (abs(xprobmin2) >= smalldouble) &
+             call mpistop("MF pole requires a true theta pole")
+           ! Radial components and scalars (including GLM psi) are even.
+           typeboundary(:,2*idim-1)=bc_symm
+           typeboundary(iw_mom(2:3),2*idim-1)=bc_asymm
+           typeboundary(iw_mag(2:3),2*idim-1)=bc_asymm
+           }
         case default
            call mpistop('unknown physics type for setting minimal pole boundary treatment')
         end select
@@ -1425,7 +1442,7 @@ contains
       if(any(typeboundary(:,2*idim)==12)) then
         if(any(typeboundary(:,2*idim)/=12)) typeboundary(:,2*idim)=12
         select case(physics_type)
-        case ('rho','ard','rd','nonlinear','ffhd')
+        case ('rho','ard','nonlinear','ffhd')
            ! all symmetric at pole
            typeboundary(:,2*idim)=bc_symm
            if(mype==0) print *,'symmetric maximal pole'
@@ -1452,8 +1469,22 @@ contains
            case default
             call mpistop('Pole is in cylindrical, polar, spherical coordinates!')
            end select
-        case ('twofl','mf')
-           call mpistop('Pole treatment for twofl or mf not implemented yet')
+        case ('twofl')
+           call mpistop('Pole treatment for twofl not implemented yet')
+        case ('mf')
+           if (ndim /= 3 .or. coordinate /= spherical .or. idim /= 2) &
+             call mpistop("MF pole requires a 3D spherical theta boundary")
+           {^IFTHREED
+           ! Spherical angles are still in turns at this point in the parser.
+           if (.not. periodB(3) .or. abs(xprobmax3-xprobmin3-one) >= smalldouble) &
+             call mpistop("MF pole requires full periodic longitude")
+           if (abs(xprobmax2-half) >= smalldouble) &
+             call mpistop("MF pole requires a true theta pole")
+           ! Radial components and scalars (including GLM psi) are even.
+           typeboundary(:,2*idim)=bc_symm
+           typeboundary(iw_mom(2:3),2*idim)=bc_asymm
+           typeboundary(iw_mag(2:3),2*idim)=bc_asymm
+           }
         case default
            call mpistop('unknown physics type for setting maximal pole boundary treatment')
         end select
