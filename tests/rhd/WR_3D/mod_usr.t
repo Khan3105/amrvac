@@ -1341,7 +1341,7 @@ enddo
     double precision, intent(inout) :: w(ixI^S,1:nw)
 
     double precision                   :: g_rad(ixI^S), big_gamma(ixI^S)
-    double precision                   :: g_grav(ixI^S)
+    double precision                   :: g_grav(ixI^S), pth(ixI^S)
     double precision                   :: Tgas(ixI^S),Trad(ixI^S)
     double precision                   :: wprim(ixI^S,1:nw), kappa(ixI^S), OPAL(ixO^S), CAK(ixO^S), CAK2(ixO^S)
     double precision                   :: vel(ixI^S), gradv(ixI^S)
