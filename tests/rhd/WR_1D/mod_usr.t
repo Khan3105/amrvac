@@ -39,6 +39,7 @@ contains
 
   !> This routine should set user methods, and activate the physics module
   subroutine usr_init()
+
     ! Check that the EoS keeps the mean molecular weight constant
     call check_eos_constant_mu()
 
@@ -78,7 +79,7 @@ contains
     ! Refine mesh near base
     usr_refine_grid => refine_base
 
-    ! Active the physics module
+    ! Activate the physics module
     call hd_activate()
 
     i_v1 = var_set_extravar("v1", "v1")
@@ -429,6 +430,7 @@ contains
        if (iB == 2) value=E_out
     endif
     if (.not.ieee_is_finite(value)) call mpistop('WR_1D: non-finite MG boundary value')
+    
     select case(iB)
     case(1)
        mg%bc(iB,mg_iphi)%bc_type=mg_bc_neumann
@@ -579,6 +581,7 @@ contains
     ! -v/r*(P_theta_theta+P_phi_phi) = -(1-f_rr)*E*v/r.
     source(ixO^S,r_e) = source(ixO^S,r_e) &
          -(one-edd(ixO^S,1,1))*v(ixO^S,rdir)*w(ixO^S,r_e)/radius(ixO^S)
+         
   end subroutine PseudoPlanarSource
 
 

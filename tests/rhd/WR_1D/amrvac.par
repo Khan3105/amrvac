@@ -76,7 +76,7 @@
   fld_Radforce_split = .false.
   fld_opacity_law = 'special'
   fld_fluxlimiter = 'Minerbo'
-  fld_diff_tol = 1.d-5
+  fld_diff_tol = 1.d-8
   fld_bisect_tol = 1.d-12
   fld_force_MG_converged = .true.
   fld_kappa0 = 0.2d0
