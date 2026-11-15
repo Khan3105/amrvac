@@ -298,8 +298,12 @@ module mod_fld
 
     elemental double precision function limited_rb(c, f1, f2)
       double precision, intent(in) :: c, f1, f2
-      limited_rb = 0.5d0*c + 0.75d0*f1 - 0.25d0*f2
-      limited_rb = min(max(limited_rb, min(c, f1)), max(c, f1))
+      double precision             :: cpos
+      ! octree-mg interpolates c along the face with an unlimited gradient
+      ! (box_gc_for_fine_neighbor), so c itself can arrive non-positive
+      cpos = merge(c, f1, c > 0.d0)
+      limited_rb = 0.5d0*cpos + 0.75d0*f1 - 0.25d0*f2
+      limited_rb = min(max(limited_rb, min(cpos, f1)), max(cpos, f1))
     end function limited_rb
 
   end subroutine fld_eps_refinement_bnd
