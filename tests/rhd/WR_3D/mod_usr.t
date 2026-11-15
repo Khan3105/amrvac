@@ -403,11 +403,10 @@ contains
     double precision, intent(in)    :: qdt, qt, x(ixI^S,1:ndim)
     double precision, intent(inout) :: w(ixI^S,1:nw)
 
-    double precision :: kappa(ixI^S), Temp(ixI^S)
-    double precision :: Temp0, rho0, n
-    double precision :: Local_gradE(ixI^S), F_adv(ixB^S)
+    double precision :: Temp(ixI^S)
+    double precision :: Local_gradE(ixI^S)
 
-    integer :: ix^D, ixP^L, ixC^L
+    integer :: ix^D
 
     select case (iB)
 
@@ -1337,7 +1336,7 @@ enddo
     double precision                   :: g_rad(ixI^S), big_gamma(ixI^S)
     double precision                   :: g_grav(ixI^S), pth(ixI^S)
     double precision                   :: Tgas(ixI^S),Trad(ixI^S)
-    double precision                   :: wprim(ixI^S,1:nw), kappa(ixI^S), OPAL(ixO^S), CAK(ixO^S), CAK2(ixO^S)
+    double precision                   :: wprim(ixI^S,1:nw), OPAL(ixO^S), CAK(ixO^S), CAK2(ixO^S)
     double precision                   :: vel(ixI^S), gradv(ixI^S)
     double precision                   :: rad_flux(ixI^S,1:ndim), Lum(ixO^S)
     double precision                   :: pp_rf(ixO^S), lambda(ixI^S), fld_R(ixI^S), gradOE(ixI^S)
@@ -1350,7 +1349,6 @@ enddo
 
     wprim(ixI^S,1:nw) = w(ixI^S,1:nw)
     call phys_to_primitive(ixI^L,ixI^L,wprim,x)
-    call fld_get_opacity_prim(wprim, x, ixI^L, ixO^L, kappa, fld_fl)
     call fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux, fld_fl)
 
     call eos%get_thermal_pressure(w,x,ixI^L,ixO^L,pth)
@@ -1379,7 +1377,6 @@ enddo
     w(ixO^S,i_v1) = w(ixO^S,mom(1))/w(ixO^S,rho_)
     w(ixO^S,i_v2) = w(ixO^S,mom(2))/w(ixO^S,rho_)
     w(ixO^S,i_v3) = w(ixO^S,mom(3))/w(ixO^S,rho_)
-    call eos%get_thermal_pressure(w,x,ixI^L,ixO^L,pth)
     w(ixO^S,i_p) = pth(ixO^S)
 
     w(ixO^S,i_Trad) = Trad(ixO^S)*unit_temperature
