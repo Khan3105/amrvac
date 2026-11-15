@@ -404,16 +404,10 @@ contains
     double precision, intent(inout) :: w(ixI^S,1:nw)
 
     double precision :: kappa(ixI^S), Temp(ixI^S)
-    double precision :: Temp0, rho0, T_out, n
+    double precision :: Temp0, rho0, n
     double precision :: Local_gradE(ixI^S), F_adv(ixB^S)
-    double precision :: Local_tauout(ixI^S)
-    double precision :: Local_Tout(ixI^S)
-
-    double precision :: kappa_out, W_geo(ixB^S)
 
     integer :: ix^D, ixP^L, ixC^L
-    double precision :: wprim(ixI^S,1:nw), kappa_D(ixI^S), lambda_D(ixI^S), R_D(ixI^S)
-    double precision :: D_base
 
     select case (iB)
 
@@ -1385,8 +1379,8 @@ enddo
     w(ixO^S,i_v1) = w(ixO^S,mom(1))/w(ixO^S,rho_)
     w(ixO^S,i_v2) = w(ixO^S,mom(2))/w(ixO^S,rho_)
     w(ixO^S,i_v3) = w(ixO^S,mom(3))/w(ixO^S,rho_)
-    w(ixO^S,i_p) = (w(ixO^S,e_) - 0.5d0 * sum(w(ixO^S, mom(:))**2, dim=ndim+1) / w(ixO^S, rho_)) &
-          *(eos%gamma - 1)
+    call eos%get_thermal_pressure(w,x,ixI^L,ixO^L,pth)
+    w(ixO^S,i_p) = pth(ixO^S)
 
     w(ixO^S,i_Trad) = Trad(ixO^S)*unit_temperature
     w(ixO^S,i_Tgas) = Tgas(ixO^S)*unit_temperature
