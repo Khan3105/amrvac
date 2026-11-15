@@ -29,7 +29,8 @@ module mod_usr
   integer :: i_Gamma, i_Lum, i_F1, i_F2, i_grE
 
   double precision :: kappa_e, L_bound, Gamma_e_bound, F_bound, gradE, E_out
-  logical :: fixed_lum, Cak_in_D, read_cak_table
+  logical :: fixed_lum, Cak_in_D 
+  logical :: read_cak_table = .false.
 
   logical          :: use_beta_law = .false.
   double precision :: beta_vel = 0.5d0, beta_b = 1.d0, T_out_ic = 5.d4
