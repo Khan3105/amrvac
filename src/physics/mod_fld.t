@@ -32,6 +32,9 @@ module mod_fld
     logical :: fld_bound_diff = .true.
     !> switches for local debug purposes
     logical :: fld_force_MG_converged = .true.
+    !> limit the MG diffusion coefficient in coarse-fine ghost cells to lie
+    !> between the coarse and fine values (keeps it positive across jumps)
+    logical :: fld_mg_eps_limit = .false.
     logical :: fld_debug,fld_no_mg
     double precision, public :: fld_cnorm = 0.0d0
     !> switches for opacity
@@ -100,7 +103,7 @@ module mod_fld
     fld_bisect_tol, fld_diff_tol, fld_opacity_law, fld_fluxlimiter, &
     fld_interaction_method, fld_opal_table, nth_for_diff_mg, &
     fld_debug,fld_no_mg,fld_force_MG_converged, fld_slowsteps,fld_boost_dt, &
-    fld_tiring_explicit,fld_cnorm,fld_bound_diff
+    fld_tiring_explicit,fld_cnorm,fld_bound_diff,fld_mg_eps_limit
 
     do n = 1, size(files)
        open(unitpar, file=trim(files(n)), status="old")
@@ -231,9 +234,108 @@ module mod_fld
        ! d/dx u = 0
        mg%bc(iB, mg_iveps)%bc_type = mg_bc_neumann
        mg%bc(iB, mg_iveps)%bc_value = 0.0_dp
+       if (fld_mg_eps_limit) then
+          mg%bc(iB, mg_iveps)%refinement_bnd => fld_eps_refinement_bnd
+       else
+          nullify(mg%bc(iB, mg_iveps)%refinement_bnd)
+       end if
     end do
 
   end subroutine fld_set_mg_bounds
+
+  !> Coarse-fine ghost cells for the MG diffusion coefficient. Same stencil as
+  !> the octree-mg default (sides_rb), but limited to the range of the coarse
+  !> value and the adjacent fine value. Unlimited, the extrapolation goes
+  !> negative across a strong jump in D, which flips the harmonic-mean face
+  !> coefficient 2ab/(a+b) in the smoother and makes the V-cycles diverge.
+  subroutine fld_eps_refinement_bnd(box, nc, iv, nb, cgc)
+    use mod_multigrid_coupling
+    type(mg_box_t), intent(inout) :: box
+    integer, intent(in)           :: nc, iv, nb
+    {^IFONED
+    real(dp), intent(in)          :: cgc(1)
+    }
+    {^IFTWOD
+    real(dp), intent(in)          :: cgc(nc)
+    }
+    {^IFTHREED
+    real(dp), intent(in)          :: cgc(nc, nc)
+    }
+    integer                       :: ig, i1, i2
+
+    if (mg_neighb_low(nb)) then
+       ig = 0;    i1 = 1;  i2 = 2
+    else
+       ig = nc+1; i1 = nc; i2 = nc-1
+    end if
+
+    {^IFONED
+    box%cc(ig, iv) = limited_rb(cgc(1), box%cc(i1, iv), box%cc(i2, iv))
+    }
+    {^IFTWOD
+    select case (mg_neighb_dim(nb))
+    case (1)
+       box%cc(ig, 1:nc, iv) = limited_rb(cgc, box%cc(i1, 1:nc, iv), box%cc(i2, 1:nc, iv))
+    case (2)
+       box%cc(1:nc, ig, iv) = limited_rb(cgc, box%cc(1:nc, i1, iv), box%cc(1:nc, i2, iv))
+    end select
+    }
+    {^IFTHREED
+    select case (mg_neighb_dim(nb))
+    case (1)
+       box%cc(ig, 1:nc, 1:nc, iv) = limited_rb(cgc, &
+            box%cc(i1, 1:nc, 1:nc, iv), box%cc(i2, 1:nc, 1:nc, iv))
+    case (2)
+       box%cc(1:nc, ig, 1:nc, iv) = limited_rb(cgc, &
+            box%cc(1:nc, i1, 1:nc, iv), box%cc(1:nc, i2, 1:nc, iv))
+    case (3)
+       box%cc(1:nc, 1:nc, ig, iv) = limited_rb(cgc, &
+            box%cc(1:nc, 1:nc, i1, iv), box%cc(1:nc, 1:nc, i2, iv))
+    end select
+    }
+
+  contains
+
+    elemental double precision function limited_rb(c, f1, f2)
+      double precision, intent(in) :: c, f1, f2
+      limited_rb = 0.5d0*c + 0.75d0*f1 - 0.25d0*f2
+      limited_rb = min(max(limited_rb, min(c, f1)), max(c, f1))
+    end function limited_rb
+
+  end subroutine fld_eps_refinement_bnd
+
+  !> Global minimum of the MG diffusion coefficient over all face ghost cells
+  !> on all MG levels; must be called on every rank
+  subroutine fld_mg_eps_ghost_min(eps_min)
+    use mod_global_parameters
+    use mod_multigrid_coupling
+    double precision, intent(out) :: eps_min
+    double precision              :: my_min
+    integer                       :: lvl, i, id, nc
+
+    my_min = bigdouble
+    do lvl = mg%lowest_lvl, mg%highest_lvl
+       nc = mg%box_size_lvl(lvl)
+       do i = 1, size(mg%lvls(lvl)%my_ids)
+          id = mg%lvls(lvl)%my_ids(i)
+          associate (cc => mg%boxes(id)%cc)
+            {^IFONED
+            my_min = min(my_min, cc(0, mg_iveps), cc(nc+1, mg_iveps))
+            }
+            {^IFTWOD
+            my_min = min(my_min, minval(cc(0:nc+1:nc+1, 1:nc, mg_iveps)), &
+                 minval(cc(1:nc, 0:nc+1:nc+1, mg_iveps)))
+            }
+            {^IFTHREED
+            my_min = min(my_min, minval(cc(0:nc+1:nc+1, 1:nc, 1:nc, mg_iveps)), &
+                 minval(cc(1:nc, 0:nc+1:nc+1, 1:nc, mg_iveps)), &
+                 minval(cc(1:nc, 1:nc, 0:nc+1:nc+1, mg_iveps)))
+            }
+          end associate
+       end do
+    end do
+    call MPI_ALLREDUCE(my_min, eps_min, 1, MPI_DOUBLE_PRECISION, MPI_MIN, icomm, ierrmpi)
+  end subroutine fld_mg_eps_ghost_min
 
 
   !> w[iw]=w[iw]+qdt*S[wCT,qtC,x] where S is the source based on wCT within ixO
@@ -814,7 +916,7 @@ module mod_fld
 
     integer, parameter           :: max_its = 100
     integer                      :: n,ixO^L,ix^D
-    double precision             :: res, max_residual, mg_lambda, fac
+    double precision             :: res, max_residual, mg_lambda, fac, eps_ghost_min
     double precision :: wmax(nw),wmin(nw)
     double precision :: wmaxb(nw),wminb(nw)
     integer :: iigrid, igrid
@@ -882,6 +984,11 @@ module mod_fld
     ! we need to restrict and adopt BCs for this variable: Neumann is set 
     call mg_restrict(mg, mg_iveps)
     call mg_fill_ghost_cells(mg, mg_iveps)
+    ! a non-positive coefficient in a ghost cell makes the MG solve diverge
+    call fld_mg_eps_ghost_min(eps_ghost_min)
+    if (eps_ghost_min <= 0.d0 .and. mype == 0) &
+         write(*,*) it, ' WARNING: MG diffusion coefficient in ghost cells <= 0, min =', eps_ghost_min, &
+         ' (set fld_mg_eps_limit = .true. in &fld_list)'
     ! Now try solving with MG
     call mg_fas_fmg(mg, .true., max_res=res)
     if(fld_debug.and.mype==0)print *,'MG residual obtained with FMG is =',res
@@ -896,7 +1003,13 @@ module mod_fld
         write(*,*) it, ' residual from MG ', res
         write(*,*) it, ' max_residual in MG ', max_residual
         write(*,*) it, ' dtfactor*qdt in MG ', qdt*dtfactor
+        write(*,*) it, ' min MG diffusion coefficient in ghost cells ', eps_ghost_min
         print *,'Currently at time=',global_time,' time step=',qdt,' dtfactor=',dtfactor
+        if (eps_ghost_min <= 0.d0 .and. .not. fld_mg_eps_limit) then
+          write(*,*) 'The MG diffusion coefficient became negative in coarse-fine ghost cells,'
+          write(*,*) 'which makes the MG solve diverge. Set fld_mg_eps_limit = .true. in'
+          write(*,*) 'the &fld_list of your par file to keep it positive.'
+        endif
       endif
       if(fld_force_MG_converged) then
           call mpistop("no convergence in MG")
