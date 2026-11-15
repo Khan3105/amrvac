@@ -122,18 +122,25 @@ contains
   !> This subroutine looks in the table for the four couples (T,rho) surrounding
   !> a given input T and rho
   subroutine get_val_comb(K1_vals,K2_vals,K3_vals,K4_vals, &
-                     logD_list, logT_list, D, T, K1, K2, K3, K4)
+                     logD_list, logT_list, D_in, T_in, K1, K2, K3, K4)
 
     double precision, intent(in)  :: K1_vals(iDmin:iDmax,iTmin:iTmax)
     double precision, intent(in)  :: K2_vals(iDmin:iDmax,iTmin:iTmax)
     double precision, intent(in)  :: K3_vals(iDmin:iDmax,iTmin:iTmax)
     double precision, intent(in)  :: K4_vals(iDmin:iDmax,iTmin:iTmax)
     double precision, intent(in)  :: logD_list(iDmin:iDmax), logT_list(iTmin:iTmax)
-    double precision, intent(in)  :: D, T
+    double precision, intent(in)  :: D_in, T_in
     double precision, intent(out) :: K1, K2, K3, K4
 
     ! Local variables
     integer :: low_D_index, up_D_index, low_T_index, up_T_index
+    double precision :: D, T
+
+    ! Outside the table, use the values at its edge (as in Moens et al. 2022b,
+    ! Sect. 2.2) instead of extrapolating: linear extrapolation over the
+    ! hot base of a WR wind gives alpha > 1 and meaningless line opacities
+    D = min(max(D_in, minval(logD_list)), maxval(logD_list))
+    T = min(max(T_in, minval(logT_list)), maxval(logT_list))
 
     if (D .ge. maxval(logD_list)) then
       ! print*, 'Extrapolating in logR'
@@ -232,9 +239,10 @@ contains
     t1 = logT_list(low_t)
     t2 = logT_list(up_t)
 
+    ! the table is stored as (rho, T), so k1/k2 and k3/k4 must differ in rho
     k1 = Kappa_vals(low_r, low_t)
-    k2 = Kappa_vals(low_r, up_t)
-    k3 = Kappa_vals(up_r, low_t)
+    k2 = Kappa_vals(up_r, low_t)
+    k3 = Kappa_vals(low_r, up_t)
     k4 = Kappa_vals(up_r, up_t)
 
     call interpolate1D(r1,r2,D,k1,k2,ka)
