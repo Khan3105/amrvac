@@ -86,7 +86,8 @@
  &wind_list
   use_beta_law = .false.
   beta_vel = 0.5d0 !Exponent of beta law for velocity
-  T_out_ic = 5.d4
+  read_cak_table = .true.
+  cak_table = 'Y09800_316kK'
   cak_Q = 2.30d3
   cak_a = 0.5d0
   cak_base = 0.66d0

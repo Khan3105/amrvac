@@ -7,6 +7,10 @@ The base directory of the source code contains a few example LTE line-opacity ta
 
 - `Y09800`: tables for a pure helium atmosphere appropriate for wind outflows from classical Wolf-Rayet stars (hydrogen mass fraction $X=0$, helium mass fraction $Y=0.98$, metal mass fraction $Z=0.02$).
 
+- `Y09800_100kK`: Same as previous but up to 1e5 K and calibrated for kappa0=0.2.
+
+- `Y09800_316kK`: Same again but up to 316kK, both tables courtesy of Dwaipayan Debnath.
+
 All these tables run in temperature from $\log_{10}(T) = 4.1...4.7$ (by 20 points) and mass density $\log_{10}(\rho) = -8...-22$ (by 50 points). Within each directory a given filename corresponds to the CAK line-opacity parameter tabulated as a function of mass density and temperature. For legacy reasons these directories are named after the helium mass fraction of the tables contained within the directory.
 
 # Generating new tables

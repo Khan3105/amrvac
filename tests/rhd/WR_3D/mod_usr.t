@@ -27,6 +27,7 @@ module mod_usr
   double precision :: kappa_e, L_bound, Gamma_e_bound, F_bound, gradE, E_out
   logical :: fixed_lum, Cak_in_D
   logical :: read_cak_table = .false.
+  character(len=64) :: cak_table = ''
   logical :: CAK_zero = .false.
 
   integer :: i_v1, i_v2, i_v3, i_p
@@ -146,7 +147,8 @@ contains
     call init_opal_table(fld_opal_table)
 
     !> Initialise CAK tables
-    call init_cak_table(fld_opal_table)
+    if (len_trim(cak_table) == 0) cak_table = fld_opal_table
+    call init_cak_table(trim(cak_table))
 
     R_star = R_star/unit_length
     M_star = M_star/unit_mass
@@ -208,7 +210,7 @@ contains
 
     namelist /wind_list/ cak_Q, cak_a, cak_base, cak_x0, cak_x1, rho_bound, kappa_e, &
     R_star, M_star, v_inf, Mdot, Gamma_e_bound, it_start_cak, fixed_lum, Cak_in_D, &
-    read_cak_table, CAK_zero, use_beta_law, beta_vel, beta_b, T_out_ic
+    read_cak_table, CAK_zero, use_beta_law, beta_vel, beta_b, T_out_ic, cak_table
 
     do n = 1, size(files)
        open(unitpar, file=trim(files(n)), status="old")
@@ -1359,7 +1361,12 @@ enddo
     call get_kappa_CAK(ixI^L,ixO^L,w,x,CAK)
     call get_kappa_CAK2(ixI^L,ixO^L,w,x,CAK2)
 
-    g_rad(ixO^S) = (OPAL(ixO^S)+CAK(ixO^S))*rad_flux(ixO^S,1)/(const_c/unit_velocity)
+    if (read_cak_table) then
+      g_rad(ixO^S) = (OPAL(ixO^S)+CAK2(ixO^S))*rad_flux(ixO^S,1)/(const_c/unit_velocity)
+    else  
+      g_rad(ixO^S) = (OPAL(ixO^S)+CAK(ixO^S))*rad_flux(ixO^S,1)/(const_c/unit_velocity)
+    endif
+
     g_grav(ixO^S) = const_G*mass/radius(ixO^S)**2*(unit_time**2/unit_length)
     big_gamma(ixO^S) = g_rad(ixO^S)/g_grav(ixO^S)
 

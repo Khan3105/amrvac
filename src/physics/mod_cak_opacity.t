@@ -6,8 +6,7 @@
 !>
 !> The CAK opacity tables are stored in src/tables/CAK_tables. It is possible
 !> to use different tables when giving the absolute or relative path to the
-!> directory containing the tables. The only limitation is that the size of the
-!> non-default tables equals the size of the tables in src/tables/CAK_tables.
+!> directory containing the tables. Table size is read automatically.
 !>
 !> This module is used in the FLD radiation module and the CAK force module.
 module mod_cak_opacity
@@ -18,20 +17,14 @@ module mod_cak_opacity
   implicit none
   private
 
-  !> min and max indices for R,T-range in opacity table
-  integer, parameter :: iDmin = 2, iDmax = 51
-  integer, parameter :: iTmin = 2, iTmax = 21
+  !> min and max indices for R,T-range in opacity table, made customisable now
+  integer, parameter :: iDmin = 2, iTmin = 2
+  integer :: iDmax = 0, iTmax = 0
+  double precision, allocatable, public :: alpha_vals(:,:), Qbar_vals(:,:), Q0_vals(:,:), kappae_vals(:,:)
+  double precision, allocatable, public :: logD_list(:), logT_list(:)
 
   !> If user wants to read tables from different location than AMRVAC source
-  !> NOTE: the tables should have same size as AMRVAC tables
   logical :: set_custom_tabledir = .false.
-
-  !> The opacity tables are read once and stored globally
-  double precision, public :: alpha_vals(iDmin:iDmax,iTmin:iTmax)
-  double precision, public :: Qbar_vals(iDmin:iDmax,iTmin:iTmax)
-  double precision, public :: Q0_vals(iDmin:iDmax,iTmin:iTmax)
-  double precision, public :: kappae_vals(iDmin:iDmax,iTmin:iTmax)
-  double precision, public :: logD_list(iDmin:iDmax), logT_list(iTmin:iTmax)
 
   public :: init_cak_table
   public :: set_cak_opacity
@@ -46,6 +39,7 @@ contains
 
     ! Local variables
     character(len=256) :: AMRVAC_DIR, path_table_dir
+    integer :: nD, nT
 
     if (present(set_custom_tabledir) .and. set_custom_tabledir) then
       path_table_dir = trim(tabledir)
@@ -53,6 +47,15 @@ contains
       call get_environment_variable("AMRVAC_DIR", AMRVAC_DIR)
       path_table_dir = trim(AMRVAC_DIR)//"/src/tables/CAK_tables/"//trim(tabledir)
     endif
+
+    call table_shape(trim(path_table_dir)//"/al_TD", nD, nT)
+    iDmax = iDmin + nD - 1
+    iTmax = iTmin + nT - 1
+    if (allocated(alpha_vals)) deallocate(alpha_vals, Qbar_vals, Q0_vals, kappae_vals, logD_list, logT_list)
+    allocate(alpha_vals(iDmin:iDmax,iTmin:iTmax), Qbar_vals(iDmin:iDmax,iTmin:iTmax), &
+            Q0_vals(iDmin:iDmax,iTmin:iTmax), kappae_vals(iDmin:iDmax,iTmin:iTmax), &
+            logD_list(iDmin:iDmax), logT_list(iTmin:iTmax))
+
 
     call read_table(logD_list, logT_list, alpha_vals, trim(path_table_dir)//"/al_TD")
     call read_table(logD_list, logT_list, Qbar_vals, trim(path_table_dir)//"/Qb_TD")
@@ -64,6 +67,33 @@ contains
     endif
 
   end subroutine init_cak_table
+
+  !> Number of density rows and temperature columns of a table: the first line holds a dummy
+  !> value and the log T values, every following non-empty line log rho and the values.
+  subroutine table_shape(filename, nD, nT)
+    character(*), intent(in) :: filename
+    integer, intent(out)     :: nD, nT
+    character(len=8192)      :: line
+    integer                  :: funit, ios, i
+    logical                  :: in_word
+
+    open(newunit=funit, file=trim(filename), status='old', action='read')
+    read(funit,'(a)') line
+    nT = -1                        ! do not count the leading dummy value
+    in_word = .false.
+    do i = 1, len_trim(line)
+      if (line(i:i) /= ' ' .and. .not. in_word) nT = nT + 1
+      in_word = line(i:i) /= ' '
+    end do
+    nD = 0
+    do
+      read(funit,'(a)',iostat=ios) line
+      if (ios /= 0) exit
+      if (len_trim(line) > 0) nD = nD + 1
+    end do
+    close(funit)
+  end subroutine table_shape
+
 
   !> This subroutine calculates the opacity for a given temperature-density
   !> structure. Opacities are read from a table with given metalicity.
