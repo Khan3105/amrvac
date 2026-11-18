@@ -301,15 +301,16 @@ contains
       enddo
     endif
 
-    !> Adding sinusoidal perturbation in y and z
+    !> Adding sinusoidal perturbation in y and z: n whole wavelengths across the box
     do ix2 = ixOmin2,ixOmax2
       do ix3 = ixOmin3,ixOmax3
         w(ixOmin1:ixOmax1,ix2,ix3,mom(2)) = 1.d-1*dsin(x(ixOmin1:ixOmax1,ix2,ix3,1)-1.d0) &
-             *dcos(6*x(ixOmin1:ixOmax1,ix2,ix3,2))*w(ixOmin1:ixOmax1,ix2,ix3,rho_)
+             *dcos(2.d0*dpi*3.d0*(x(ixOmin1:ixOmax1,ix2,ix3,2)-xprobmin2)/(xprobmax2-xprobmin2))
         w(ixOmin1:ixOmax1,ix2,ix3,mom(3)) = 1.d-1*dsin(x(ixOmin1:ixOmax1,ix2,ix3,1)-1.d0) &
-             *dcos(6*x(ixOmin1:ixOmax1,ix2,ix3,3))*w(ixOmin1:ixOmax1,ix2,ix3,rho_)
+             *dcos(2.d0*dpi*3.d0*(x(ixOmin1:ixOmax1,ix2,ix3,3)-xprobmin3)/(xprobmax3-xprobmin3))
       enddo
     enddo
+
 
     call hd_to_conserved(ixI^L,ixO^L,w,x)
 
